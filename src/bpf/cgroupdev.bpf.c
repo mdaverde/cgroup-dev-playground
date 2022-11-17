@@ -21,11 +21,12 @@ SEC("cgroup/dev")
 int bpf_prog1(struct bpf_cgroup_dev_ctx *ctx)
 {
 	short type = ctx->access_type & 0xFFFF;
-	if (ctx->major != 1 || type != BPF_DEVCG_DEV_CHAR) {
+	if (ctx->major != 1) {
 		return 0;
 	}
 
 	switch (ctx->minor) {
+		case 3: /* 1:3 /dev/null */
 		case 5: /* 1:5 /dev/zero */
 		case 9: /* 1:9 /dev/urandom */
 			return 1;
