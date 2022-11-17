@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.66"
+ctrlc = "3.2.3"
 libbpf-rs = "0.19.1"
 libc = "0.2.137"
 

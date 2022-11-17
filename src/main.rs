@@ -5,6 +5,8 @@ use std::ffi::{CString, OsStr};
 use std::fs::OpenOptions;
 use std::os::unix::prelude::*;
 use std::path::Path;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 use std::{
     ffi::CStr,
     fs::{DirBuilder, File},
@@ -56,7 +58,9 @@ impl TmpCgroup {
     pub fn delete(&mut self) {
         let path_ptr = self.path.as_ptr();
         if unsafe { libc::rmdir(path_ptr) } != 0 {
-            panic!("could not delete cgroup: {:?}", self.path)
+            eprintln!("could not delete cgroup: {:?}", self.path);
+        } else {
+            println!("deleted cgroup: {:?}", self.path);
         }
     }
 }
@@ -68,6 +72,15 @@ impl Drop for TmpCgroup {
 }
 
 fn main() {
+    let running = Arc::new(AtomicBool::new(true));
+    let r = running.clone();
+
+    ctrlc::set_handler(move || {
+        println!("Ending process after end of next loop...");
+        r.store(false, Ordering::SeqCst);
+    })
+    .expect("failed to set ctrl-c handler");
+
     let cgroup1 = TmpCgroup::new("tmp10");
 
     let mut skel_builder = cgroupdev::CgroupdevSkelBuilder::default();
@@ -104,7 +117,7 @@ fn main() {
     //     panic!("could not attach bpf program to cgroup dev");
     // }
 
-    loop {
+    while running.load(Ordering::SeqCst) {
         std::thread::sleep(std::time::Duration::new(5, 0))
     }
 }
