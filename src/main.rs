@@ -71,6 +71,13 @@ impl Drop for TmpCgroup {
     }
 }
 
+/* Cases:
+ *   1) Redundant links between the same program fd and cgroup fd result in
+ *      successful (redundant) link creation but bpf(BPF_PROG_QUERY) also returns
+ *      redundant prog_ids to signify multiple attachments of the same program on the object
+ *   2) You can not *directly* attach the same program fds to the same cgroup fd
+ */
+
 fn main() {
     let running = Arc::new(AtomicBool::new(true));
     let r = running.clone();
@@ -82,6 +89,7 @@ fn main() {
     .expect("failed to set ctrl-c handler");
 
     let cgroup1 = TmpCgroup::new("tmp10");
+    let cgroup1_fd = cgroup1.fd();
 
     let mut skel_builder = cgroupdev::CgroupdevSkelBuilder::default();
     skel_builder.obj_builder.debug(true);
@@ -91,30 +99,63 @@ fn main() {
     // Not sure it's possible to load a specific bpf program
     let mut skel = open_skel.load().expect("could not load");
 
-    let cgroup1_fd = cgroup1.fd();
+    let mut progs = skel.progs_mut();
+    let bpf_prog1 = progs.bpf_prog1();
 
-    // Only is alive for the lifetime of the process
-    // Seems like this is fd-based (only alive locally)? Is this the case with all links??
-    let bpf_prog1_link = skel
-        .progs_mut()
-        .bpf_prog1()
+    /*
+     * bpf links: only is alive for the lifetime of the process
+     * Seems like this is fd-based (only alive locally)? Is this the case with all links??
+     */
+
+    let bpf_prog1_link = bpf_prog1
         .attach_cgroup(cgroup1_fd.as_raw_fd())
-        .expect("attach bpf_prog1 to cgroup");
+        .expect("original link: attach bpf_prog1 to cgroup");
 
-    // Stays around even after program exits
-    // let mut progs = skel.progs_mut();
-    // let bpf_prog1_link = progs.bpf_prog1();
+    /*
+     * TEST 1: Try attaching same bpf program to same cgroup through new link
+     * RESULT: Multiple links are created. Will show up in bpftool link and bpftool cgroup tree
+     */
 
-    // if unsafe {
+    let bpf_prog1_link2 = bpf_prog1
+        .attach_cgroup(cgroup1_fd.as_raw_fd())
+        .expect("link2: attach bpf_prog1 to cgroup");
+
+    // Direct attachments ON TOP OF redundant link attachment
+    let direct_attach_result1 = unsafe {
+        libbpf_sys::bpf_prog_attach(
+            bpf_prog1.fd(),
+            cgroup1_fd.as_raw_fd(),
+            libbpf_rs::ProgramAttachType::CgroupDevice as u32,
+            libbpf_sys::BPF_F_ALLOW_MULTI,
+        )
+    };
+    if direct_attach_result1 != 0 {
+        panic!(
+            "could not attach bpf program to cgroup dev. result: {} errno: {}",
+            direct_attach_result1,
+            -unsafe { *libc::__errno_location() }
+        );
+    } else {
+        println!("directly attached 1");
+    }
+
+    /* Test 2: Can't **directly** attach multiple times, even with ALLOW_MULTI */
+    // let direct_attach_result2 = unsafe {
     //     libbpf_sys::bpf_prog_attach(
-    //         bpf_prog1_link.fd(),
+    //         bpf_prog1.fd(),
     //         cgroup1_fd.as_raw_fd(),
     //         libbpf_rs::ProgramAttachType::CgroupDevice as u32,
-    //         0,
+    //         libbpf_sys::BPF_F_ALLOW_MULTI,
     //     )
-    // } != 0
-    // {
-    //     panic!("could not attach bpf program to cgroup dev");
+    // };
+    // if direct_attach_result2 != 0 {
+    //     panic!(
+    //         "could not attach bpf program to cgroup dev. result: {} errno: {}",
+    //         direct_attach_result2,
+    //         -unsafe { *libc::__errno_location() }
+    //     );
+    // } else {
+    //     println!("directly attached 2");
     // }
 
     while running.load(Ordering::SeqCst) {
