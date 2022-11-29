@@ -40,7 +40,7 @@ impl TmpCgroup {
         TmpCgroup { path: cgroup_path }
     }
 
-    pub fn fd(&self) -> OwnedFd {
+    pub fn create(&self) -> OwnedFd {
         let path = Path::new(OsStr::from_bytes(self.path.as_c_str().to_bytes()));
         OpenOptions::new()
             .read(true)
@@ -83,8 +83,8 @@ fn main() {
     })
     .expect("failed to set ctrl-c handler");
 
-    let cgroup1 = TmpCgroup::new(format!("{}{}", CGROUP_MOUNT_PATH, "tmp10"));
-    let cgroup1_fd = cgroup1.fd();
+    let cgroup1 = TmpCgroup::new(format!("{}/{}", CGROUP_MOUNT_PATH, "tmp10"));
+    let cgroup1_fd = cgroup1.create();
 
     let mut skel_builder = cgroupdev::CgroupdevSkelBuilder::default();
     skel_builder.obj_builder.debug(true);
@@ -156,6 +156,13 @@ fn main() {
     // } else {
     //     println!("directly attached 2");
     // }
+
+    let child_cgroup = TmpCgroup::new(format!("{}/{}/{}", CGROUP_MOUNT_PATH, "tmp10", "tmpchild"));
+    let child_cgroup_fd = child_cgroup.create();
+
+    let bpf_prog1_child_link1 = bpf_prog1
+        .attach_cgroup(child_cgroup_fd.as_raw_fd())
+        .expect("could not attach to tmpchild cgroup");
 
     while running.load(Ordering::SeqCst) {
         std::thread::sleep(std::time::Duration::new(5, 0))

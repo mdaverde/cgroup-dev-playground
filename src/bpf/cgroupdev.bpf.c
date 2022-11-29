@@ -20,6 +20,8 @@ enum {
 SEC("cgroup/dev")
 int bpf_prog1(struct bpf_cgroup_dev_ctx *ctx)
 {
+	bpf_printk("hello from cgroup: %d\n", bpf_get_current_cgroup_id());
+
 	short type = ctx->access_type & 0xFFFF;
 	if (ctx->major != 1) {
 		return 0;
