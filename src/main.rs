@@ -96,22 +96,12 @@ fn main() {
      * Seems like this is fd-based (only alive locally)? Is this the case with all links??
      */
 
-    let _bpf_prog1_link = bpf_prog1
-        .attach_cgroup(cgroup1_fd.as_raw_fd())
-        .expect("original link: attach bpf_prog1 to cgroup");
-
-    /*
-     * TEST 1: Try attaching same bpf program to same cgroup through new link
-     * RESULT: Multiple links are created. Will show up in bpftool link and bpftool cgroup tree
-     */
-
-    let _bpf_prog1_link2 = bpf_prog1
-        .attach_cgroup(cgroup1_fd.as_raw_fd())
-        .expect("link2: attach bpf_prog1 to cgroup");
-
-    let _bpf_prog1_link3 = bpf_prog1
-        .attach_cgroup(cgroup1_fd.as_raw_fd())
-        .expect("link2: attach bpf_prog1 to cgroup");
+    for _ in 0..63 {
+        let bpf_prog1_link = bpf_prog1
+            .attach_cgroup(cgroup1_fd.as_raw_fd())
+            .expect("original link: attach bpf_prog1 to cgroup");
+        std::mem::forget(bpf_prog1_link);
+    }
 
     // Direct attachments ON TOP OF redundant link attachment
     let direct_attach_result1 = unsafe {
@@ -154,13 +144,13 @@ fn main() {
     let child_cgroup = TmpCgroup::new(format!("{}/{}/{}", CGROUP_MOUNT_PATH, "tmp10", "tmpchild"));
     let child_cgroup_fd = child_cgroup.create();
 
-    let _bpf_prog1_child_link1 = bpf_prog1
-        .attach_cgroup(child_cgroup_fd.as_raw_fd())
-        .expect("could not attach to tmpchild cgroup");
-
-    let _bpf_prog1_child_link2 = bpf_prog1
-        .attach_cgroup(child_cgroup_fd.as_raw_fd())
-        .expect("could not attach to tmpchild cgroup");
+    // Doesn't allow more than 64
+    for _ in 0..63 {
+        let bpf_prog1_child_link = bpf_prog1
+            .attach_cgroup(child_cgroup_fd.as_raw_fd())
+            .expect("could not attach to tmpchild cgroup");
+        std::mem::forget(bpf_prog1_child_link);
+    }
 
     let direct_attach_child_result1 = unsafe {
         libbpf_sys::bpf_prog_attach(
