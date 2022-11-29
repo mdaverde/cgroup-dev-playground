@@ -26,17 +26,12 @@ struct TmpCgroup {
 
 impl TmpCgroup {
     // Would be try_new but we panic if our assertions fails
-    pub fn new(name: &'static str) -> Self {
-        let mut path_string =
-            String::from_str(CGROUP_MOUNT_PATH).expect("mount path could not parse");
-        path_string.push('/');
-        path_string.push_str(name);
-
+    pub fn new<T: AsRef<Path>>(cgroup_path: T) -> Self {
         DirBuilder::new()
-            .create(path_string.as_str())
+            .create(cgroup_path.as_ref())
             .expect("could not create cgroup dir");
 
-        let mut path_bytes = path_string.into_bytes();
+        let mut path_bytes = cgroup_path.as_ref().as_os_str().as_bytes().to_vec();
         path_bytes.push(b'\0');
 
         let cgroup_path =
@@ -88,7 +83,7 @@ fn main() {
     })
     .expect("failed to set ctrl-c handler");
 
-    let cgroup1 = TmpCgroup::new("tmp10");
+    let cgroup1 = TmpCgroup::new(format!("{}{}", CGROUP_MOUNT_PATH, "tmp10"));
     let cgroup1_fd = cgroup1.fd();
 
     let mut skel_builder = cgroupdev::CgroupdevSkelBuilder::default();
