@@ -1,18 +1,12 @@
-use anyhow::{bail, Result};
 use libbpf_rs::libbpf_sys;
-use libbpf_rs::libbpf_sys::libbpf_major_version;
+
 use std::ffi::{CString, OsStr};
+use std::fs::DirBuilder;
 use std::fs::OpenOptions;
 use std::os::unix::prelude::*;
 use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::{
-    ffi::CStr,
-    fs::{DirBuilder, File},
-    path::PathBuf,
-    str::FromStr,
-};
 
 mod cgroupdev {
     include!(concat!(env!("OUT_DIR"), "/cgroupdev.skel.rs"));
@@ -89,7 +83,7 @@ fn main() {
     let mut skel_builder = cgroupdev::CgroupdevSkelBuilder::default();
     skel_builder.obj_builder.debug(true);
 
-    let mut open_skel = skel_builder.open().expect("could not open");
+    let open_skel = skel_builder.open().expect("could not open");
 
     // Not sure it's possible to load a specific bpf program
     let mut skel = open_skel.load().expect("could not load");
@@ -102,7 +96,7 @@ fn main() {
      * Seems like this is fd-based (only alive locally)? Is this the case with all links??
      */
 
-    let bpf_prog1_link = bpf_prog1
+    let _bpf_prog1_link = bpf_prog1
         .attach_cgroup(cgroup1_fd.as_raw_fd())
         .expect("original link: attach bpf_prog1 to cgroup");
 
@@ -111,11 +105,11 @@ fn main() {
      * RESULT: Multiple links are created. Will show up in bpftool link and bpftool cgroup tree
      */
 
-    let bpf_prog1_link2 = bpf_prog1
+    let _bpf_prog1_link2 = bpf_prog1
         .attach_cgroup(cgroup1_fd.as_raw_fd())
         .expect("link2: attach bpf_prog1 to cgroup");
 
-    let bpf_prog1_link3 = bpf_prog1
+    let _bpf_prog1_link3 = bpf_prog1
         .attach_cgroup(cgroup1_fd.as_raw_fd())
         .expect("link2: attach bpf_prog1 to cgroup");
 
@@ -160,7 +154,7 @@ fn main() {
     let child_cgroup = TmpCgroup::new(format!("{}/{}/{}", CGROUP_MOUNT_PATH, "tmp10", "tmpchild"));
     let child_cgroup_fd = child_cgroup.create();
 
-    let bpf_prog1_child_link1 = bpf_prog1
+    let _bpf_prog1_child_link1 = bpf_prog1
         .attach_cgroup(child_cgroup_fd.as_raw_fd())
         .expect("could not attach to tmpchild cgroup");
 
