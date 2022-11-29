@@ -120,6 +120,10 @@ fn main() {
         .attach_cgroup(cgroup1_fd.as_raw_fd())
         .expect("link2: attach bpf_prog1 to cgroup");
 
+    let bpf_prog1_link3 = bpf_prog1
+        .attach_cgroup(cgroup1_fd.as_raw_fd())
+        .expect("link2: attach bpf_prog1 to cgroup");
+
     // Direct attachments ON TOP OF redundant link attachment
     let direct_attach_result1 = unsafe {
         libbpf_sys::bpf_prog_attach(
