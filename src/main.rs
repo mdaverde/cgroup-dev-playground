@@ -158,6 +158,24 @@ fn main() {
         .attach_cgroup(child_cgroup_fd.as_raw_fd())
         .expect("could not attach to tmpchild cgroup");
 
+    let direct_attach_child_result1 = unsafe {
+        libbpf_sys::bpf_prog_attach(
+            bpf_prog1.fd(),
+            child_cgroup_fd.as_raw_fd(),
+            libbpf_rs::ProgramAttachType::CgroupDevice as u32,
+            libbpf_sys::BPF_F_ALLOW_MULTI
+        )
+    };
+    if direct_attach_child_result1 != 0 {
+        panic!(
+            "could not attach bpf program to tmpchild cgroup. result: {} errno: {}",
+            direct_attach_child_result1,
+            -unsafe { *libc::__errno_location() }
+        )
+    } else {
+        println!("attached to tmpchild cgroup");
+    }
+
     while running.load(Ordering::SeqCst) {
         std::thread::sleep(std::time::Duration::new(5, 0))
     }
