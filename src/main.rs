@@ -158,12 +158,16 @@ fn main() {
         .attach_cgroup(child_cgroup_fd.as_raw_fd())
         .expect("could not attach to tmpchild cgroup");
 
+    let _bpf_prog1_child_link2 = bpf_prog1
+        .attach_cgroup(child_cgroup_fd.as_raw_fd())
+        .expect("could not attach to tmpchild cgroup");
+
     let direct_attach_child_result1 = unsafe {
         libbpf_sys::bpf_prog_attach(
             bpf_prog1.fd(),
             child_cgroup_fd.as_raw_fd(),
             libbpf_rs::ProgramAttachType::CgroupDevice as u32,
-            libbpf_sys::BPF_F_ALLOW_MULTI
+            libbpf_sys::BPF_F_ALLOW_MULTI,
         )
     };
     if direct_attach_child_result1 != 0 {
