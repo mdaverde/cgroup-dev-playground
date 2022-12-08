@@ -1,3 +1,4 @@
+use libbpf_rs::libbpf_sys;
 use std::sync::{self, atomic};
 
 mod lsm1 {
@@ -13,6 +14,31 @@ fn main() {
         println!("Ending process after end of next loop...");
     })
     .expect("failed to set ctrl-c handler");
+
+    let mut skel_builder = lsm1::Lsm1SkelBuilder::default();
+    skel_builder.obj_builder.debug(true);
+
+    let open_skel = skel_builder.open().unwrap();
+
+    let mut skel = open_skel.load().unwrap();
+    let mut progs = skel.progs_mut();
+    let file_open_lsm_prog = progs.file_open_lsm();
+
+    let file_open_lsm_prog_fd = file_open_lsm_prog.fd();
+
+    let ret = unsafe {
+        libbpf_sys::bpf_prog_attach(
+            file_open_lsm_prog_fd,
+            123, // Doesn't matter to show leak
+            libbpf_rs::ProgramAttachType::LsmMac as u32,
+            0,
+        )
+    };
+    if ret != 0 {
+        panic!("did not attach lsm program: {} {}", ret, -unsafe {
+            *libc::__errno_location()
+        });
+    }
 
     println!("Running... Ctrl-C to quit");
     while running.load(atomic::Ordering::SeqCst) {
