@@ -5,7 +5,12 @@
 
 char LICENSE[] SEC("license") = "Dual BSD/GPL";
 
-// Why does this need to be here and isn't in vmlinux.h?
+// These enums actually exist in <linux/bpf.h> but when we #include them we get
+// multiple redefinition issues due to the fact the redundant types live in vmlinux.h,
+// which we also #include. Why don't these exist in vmlinux.h already? Seems that
+// support for 64 bit enum in BTF just got added in 06/22:
+// https://lwn.net/ml/bpf/20220603015855.1187538-1-yhs@fb.com/
+// https://lwn.net/Articles/905738/
 enum {
 	BPF_DEVCG_ACC_MKNOD	= (1ULL << 0),
 	BPF_DEVCG_ACC_READ	= (1ULL << 1),
