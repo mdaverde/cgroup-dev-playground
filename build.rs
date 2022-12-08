@@ -37,6 +37,19 @@ fn build_cgroupdev() {
     println!("cargo:rerun-if-changed={}", SRC);
 }
 
+fn build_cgroupsysctl() {
+    const SRC: &str = "src/bpf/cgroupsysctl.bpf.c";
+
+    let mut out =
+        PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR must be set in build script"));
+    out.push("cgroupsysctl.skel.rs");
+
+    build_bpf(SRC, out.as_path());
+
+    println!("cargo:rerun-if-changed={}", SRC);
+}
+
 fn main() {
     build_cgroupdev();
+    build_cgroupsysctl();
 }

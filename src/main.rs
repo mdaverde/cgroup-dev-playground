@@ -12,6 +12,11 @@ mod cgroupdev {
     include!(concat!(env!("OUT_DIR"), "/cgroupdev.skel.rs"));
 }
 
+mod cgroupsysctl {
+    include!(concat!(env!("OUT_DIR"), "/cgroupsysctl.skel.rs"));
+}
+
+
 const CGROUP_MOUNT_PATH: &str = "/sys/fs/cgroup";
 
 struct TmpCgroup {
