@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-fn build_bpf(src: &'static str, out: &Path) {
+fn build_skel(src: &str, out: &Path) {
     // libbpf-cargo doesn't include *all* of clang's default system includes
     // (although it should) so when we want to use certain headers, we need to
     // manually include them. To find which to include, see libbpf's Makefile:
@@ -25,31 +25,22 @@ fn build_bpf(src: &'static str, out: &Path) {
     }
 }
 
-fn build_cgroupdev() {
-    const SRC: &str = "src/bpf/cgroupdev.bpf.c";
+fn build_bpf(name: &'static str) {
+    let src_path = format!("src/bpf/{}.bpf.c", name);
 
     let mut out =
         PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR must be set in build script"));
-    out.push("cgroupdev.skel.rs");
+    out.push(format!("{}.skel.rs", name));
 
-    build_bpf(SRC, out.as_path());
+    build_skel(src_path.as_str(), out.as_path());
 
-    println!("cargo:rerun-if-changed={}", SRC);
-}
-
-fn build_cgroupsysctl() {
-    const SRC: &str = "src/bpf/cgroupsysctl.bpf.c";
-
-    let mut out =
-        PathBuf::from(env::var_os("OUT_DIR").expect("OUT_DIR must be set in build script"));
-    out.push("cgroupsysctl.skel.rs");
-
-    build_bpf(SRC, out.as_path());
-
-    println!("cargo:rerun-if-changed={}", SRC);
+    println!("cargo:rerun-if-changed={}", src_path);
 }
 
 fn main() {
-    build_cgroupdev();
-    build_cgroupsysctl();
+    const BPF_PROGS: [&str; 2] = ["cgroupdev", "cgroupsysctl"];
+
+    for prog_name in BPF_PROGS.into_iter() {
+        build_bpf(prog_name);
+    }
 }
