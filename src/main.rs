@@ -16,10 +16,6 @@ mod cgroupsysctl {
     include!(concat!(env!("OUT_DIR"), "/cgroupsysctl.skel.rs"));
 }
 
-mod lsm1 {
-    include!(concat!(env!("OUT_DIR"), "/lsm1.skel.rs"));
-}
-
 const CGROUP_MOUNT_PATH: &str = "/sys/fs/cgroup";
 
 struct TmpCgroup {
@@ -181,10 +177,4 @@ fn main() {
     while running.load(Ordering::SeqCst) {
         std::thread::sleep(std::time::Duration::new(5, 0))
     }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_lsm_program() {}
 }
