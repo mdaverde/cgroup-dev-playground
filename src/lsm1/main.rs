@@ -29,13 +29,15 @@ fn main() {
     let ret = unsafe {
         libbpf_sys::bpf_prog_attach(
             file_open_lsm_prog_fd,
-            123, // Doesn't matter to show leak
+            123, // Should be target fd but doesn't matter to show leak
             libbpf_rs::ProgramAttachType::LsmMac as u32,
             0,
         )
     };
     if ret != 0 {
-        panic!("did not attach lsm program: {} {}", ret, -unsafe {
+        // If attachment failed, then LSM program would leak. More information &
+        // resolution here: https://lore.kernel.org/all/CAKH8qBvRnDFhWEkZr9UNdznKNoCcjsZNBXeSVpXWooFhm5+C3g@mail.gmail.com/
+        panic!("did not raw attach lsm program: {} {}", ret, -unsafe {
             *libc::__errno_location()
         });
     }
