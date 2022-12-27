@@ -12,10 +12,6 @@ mod cgroupdev {
     include!(concat!(env!("OUT_DIR"), "/cgroupdev.skel.rs"));
 }
 
-mod cgroupsysctl {
-    include!(concat!(env!("OUT_DIR"), "/cgroupsysctl.skel.rs"));
-}
-
 const CGROUP_MOUNT_PATH: &str = "/sys/fs/cgroup";
 
 struct TmpCgroup {
@@ -95,19 +91,8 @@ fn main() {
     let mut progs = skel.progs_mut();
     let bpf_prog1 = progs.bpf_prog1();
 
-    /*
-     * bpf links: only is alive for the lifetime of the process
-     * Seems like this is fd-based (only alive locally)? Is this the case with all links??
-     */
+    /* TEST: Direct attachments ON TOP OF redundant link attachment */
 
-    for _ in 0..63 {
-        let bpf_prog1_link = bpf_prog1
-            .attach_cgroup(cgroup1_fd.as_raw_fd())
-            .expect("original link: attach bpf_prog1 to cgroup");
-        std::mem::forget(bpf_prog1_link);
-    }
-
-    // Direct attachments ON TOP OF redundant link attachment
     let direct_attach_result1 = unsafe {
         libbpf_sys::bpf_prog_attach(
             bpf_prog1.fd(),
@@ -126,7 +111,23 @@ fn main() {
         println!("directly attached 1");
     }
 
-    /* Test 2: Can't **directly** attach multiple times, even with ALLOW_MULTI */
+    /*
+     * bpf links: only is alive for the lifetime of the process
+     * Seems like this is fd-based (only alive locally)? Is this the case with all links??
+     *
+     * Note that link creation enforces BPF_F_ALLOW_MULTI
+     */
+
+    for i in 0..63 {
+        let bpf_prog1_link = bpf_prog1
+            .attach_cgroup(cgroup1_fd.as_raw_fd())
+            .unwrap_or_else(|_| panic!("original link: attach bpf_prog1 to cgroup {i}"));
+        std::mem::forget(bpf_prog1_link);
+        println!("link attached {i}");
+    }
+
+    /* TEST: Can't **directly** attach multiple times, even with ALLOW_MULTI */
+
     // let direct_attach_result2 = unsafe {
     //     libbpf_sys::bpf_prog_attach(
     //         bpf_prog1.fd(),
@@ -144,6 +145,8 @@ fn main() {
     // } else {
     //     println!("directly attached 2");
     // }
+
+    /* TEST: Redundant attachments even across child cgroups */
 
     let child_cgroup = TmpCgroup::new(format!("{}/{}/{}", CGROUP_MOUNT_PATH, "tmp10", "tmpchild"));
     let child_cgroup_fd = child_cgroup.create();

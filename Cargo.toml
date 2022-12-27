@@ -8,6 +8,10 @@ edition = "2021"
 name = "lsm1"
 path = "src/lsm1/main.rs"
 
+[[bin]]
+name ="cgroup-redundant-attach"
+path = "src/cgroup-redundant-attach/main.rs"
+
 [dependencies]
 anyhow = "1.0.66"
 ctrlc = "3.2.3"
